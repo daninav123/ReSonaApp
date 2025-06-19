@@ -7,6 +7,14 @@
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
 
+  /* Paleta de colores */
+  --color-primary: #3b82f6;
+  --color-pending: #3b82f6;
+  --color-active: #10b981;
+  --color-warning: #f59e0b;
+  --sidebar-bg: #e0f2fe;
+  --sidebar-active: #bae6fd;
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -24,10 +32,14 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
 }
 
 h1 {

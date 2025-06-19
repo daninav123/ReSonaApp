@@ -8,6 +8,7 @@
     "mongoose": "^8.16.0"
   },
   "scripts": {
+    "seed-admin": "ts-node-dev --respawn --transpile-only seedAdmin.ts",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "test": "jest --passWithNoTests"
   },
