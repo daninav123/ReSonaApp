@@ -4,23 +4,24 @@
   flex-direction: column;
   height: 100vh;
 }
-.header {
-  background: #fff;
-  padding: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-}
 .layout-content {
   display: flex;
   flex: 1;
 }
 .sidebar {
   width: 240px;
-  background-color: #e0f2fe;
+  background-color: var(--sidebar-bg);
   padding: 1rem;
 }
+
+/* Sidebar logo */
+.sidebar-logo {
+  width: 80%;
+  margin: var(--spacing-md) 0 var(--spacing-md) var(--spacing-md);
+  display: block;
+}
+
+.sidebar nav ul { list-style: none; padding: 0; margin: 0; }
 
 .sidebar nav ul li a {
   display: flex;
@@ -36,7 +37,7 @@
   background-color: rgba(59, 130, 246, 0.1);
 }
 .sidebar nav ul li a.active {
-  background-color: #bae6fd;
+  background-color: var(--sidebar-active);
 }
 .sidebar nav ul li a svg {
   margin-right: 0.75rem;
@@ -44,9 +45,17 @@
 }
 .main-content {
   flex: 1;
-  padding: 1.5rem;
-  background-color: #f8fafc;
+  padding: var(--spacing-md);
+  background-color: var(--color-background, #f8fafc);
   overflow-y: auto;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.main-content h1 {
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--spacing-md);
+  color: var(--color-primary);
 }
 
 /* Dashboard styles */
@@ -61,10 +70,57 @@
 }
 .card {
   background: #fff;
-  padding: 1rem;
-  border-radius: 4px;
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 .card h3 {
   margin: 0 0 0.5rem;
+}
+
+/* Responsive sidebar */
+.sidebar-toggle {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  z-index: 1100;
+}
+
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  z-index: 900;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+    width: 240px;
+    z-index: 1000;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  .layout-content {
+    margin-left: 0;
+  }
+}
+
+@media (min-width: 769px) {
+  .sidebar {
+    transform: translateX(0);
+  }
+
 }

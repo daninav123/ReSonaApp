@@ -1,0 +1,36 @@
+/* Dashboard tabs and cards styles */
+.tabs {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+.tab {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: none;
+  background: var(--color-bg-secondary, #e2e8f0);
+  cursor: pointer;
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-base);
+}
+.tab.active {
+  background: var(--color-primary);
+  color: #fff;
+}
+.dashboard-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+}
+.card {
+  background: #fff;
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.card h3 {
+  margin: 0 0 var(--spacing-sm);
+}
+.count {
+  font-size: var(--font-size-xl);
+  margin: 0 0 var(--spacing-xs);
+}

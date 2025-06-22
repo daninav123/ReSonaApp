@@ -1,4 +1,4 @@
-import { Schema, model, Document, Types } from 'mongoose';
+import mongoose, { Schema, model, Document, Types } from 'mongoose';
 
 // ---------------- User ----------------
 export interface IUser extends Document {
@@ -6,6 +6,8 @@ export interface IUser extends Document {
   email: string;
   passwordHash: string;
   roles: string[];
+  avatar?: string;
+  preferences?: { notifications: { email: boolean; sms: boolean; push: boolean }; theme: 'light' | 'dark' };
   lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -18,6 +20,11 @@ const UserSchema = new Schema<IUser>(
     passwordHash: { type: String, required: true },
     roles: { type: [String], default: [] },
     lastLogin: { type: Date },
+    avatar: { type: String },
+    preferences: {
+      notifications: { email: Boolean, sms: Boolean, push: Boolean },
+      theme: { type: String, enum: ['light','dark'], default: 'light' }
+    },
   },
   { timestamps: true }
 );
@@ -52,11 +59,15 @@ const ClientSchema = new Schema<IClient>(
   },
   { timestamps: true }
 );
+ClientSchema.index({ name: 'text', email: 1, status: 1 });
 export const Client = model<IClient>('Client', ClientSchema);
 
 // ---------------- Budget ----------------
 export interface IBudget extends Document {
   client: Types.ObjectId;
+  title: string;
+  amount: number;
+  notes?: string;
   createdBy: Types.ObjectId;
   assignedCommercial: Types.ObjectId;
   date: Date;
@@ -76,8 +87,11 @@ export interface IBudget extends Document {
 const BudgetSchema = new Schema<IBudget>(
   {
     client: { type: Schema.Types.ObjectId, ref: 'Client', required: true },
+    title: { type: String, required: true },
+    amount: { type: Number, required: true },
+    notes: String,
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    assignedCommercial: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    assignedCommercial: { type: Schema.Types.ObjectId, ref: 'User' },
     date: { type: Date, default: Date.now },
     items: [
       {
@@ -220,7 +234,7 @@ const MaterialSchema = new Schema<IMaterial>(
   },
   { timestamps: true }
 );
-export const Material = model<IMaterial>('Material', MaterialSchema);
+export const Material = (mongoose.models.Material as mongoose.Model<IMaterial>) || model<IMaterial>('Material', MaterialSchema);
 
 // ---------------- Task ----------------
 export interface ITask extends Document {

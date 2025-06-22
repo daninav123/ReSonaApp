@@ -1,0 +1,82 @@
+.settings-page {
+  padding: 1rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #ccc;
+}
+
+.avatar-upload {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  background-color: #007bff;
+  color: #fff;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.avatar-upload input[type="file"] {
+  display: none;
+}
+
+.roles {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.profile-form input {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.profile-form button {
+  align-self: flex-start;
+}
+
+section {
+  margin-bottom: 1.5rem;
+}
+
+.activity-list {
+  list-style: none;
+  padding: 0;
+}
+
+.activity-list li {
+  padding: 0.25rem 0;
+  border-bottom: 1px solid #eee;
+}
+
+.error {
+  color: #dc3545;
+  margin-bottom: 1rem;
+}
+
+.success {
+  color: #28a745;
+  margin-bottom: 1rem;
+}

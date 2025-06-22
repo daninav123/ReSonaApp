@@ -25,11 +25,13 @@ export const authenticateJWT = (
 ) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
-    return res.status(401).json({ message: 'No token provided' });
+    res.status(401).json({ message: 'No token provided' });
+    return;
   }
   const [scheme, token] = authHeader.split(' ');
   if (scheme !== 'Bearer' || !token) {
-    return res.status(401).json({ message: 'Invalid auth header' });
+    res.status(401).json({ message: 'Invalid auth header' });
+    return;
   }
   try {
     const payload = jwt.verify(
@@ -39,6 +41,7 @@ export const authenticateJWT = (
     req.user = { userId: payload.userId, roles: payload.roles };
     next();
   } catch (err) {
-    return res.status(401).json({ message: 'Invalid or expired token' });
+    res.status(401).json({ message: 'Invalid or expired token' });
+    return;
   }
 };

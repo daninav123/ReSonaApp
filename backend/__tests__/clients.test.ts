@@ -16,7 +16,7 @@ beforeAll(async () => {
   const uri = mongoServer.getUri();
   await mongoose.connect(uri);
   adminToken = jwt.sign(
-    { userId: new mongoose.Types.ObjectId().toString(), roles: ['admin'] },
+    { userId: new mongoose.Types.ObjectId().toString(), roles: ['CEO'] },
     process.env.JWT_SECRET as string,
     { expiresIn: '1h' }
   );

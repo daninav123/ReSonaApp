@@ -1,0 +1,5 @@
+/* CSS Variables for global dimensions and theming */
+:root {
+  /* Height of sidebar logo; page titles will match this height */
+  --sidebar-logo-height: 48px;
+}

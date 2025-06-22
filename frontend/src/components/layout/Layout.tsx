@@ -1,16 +1,22 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import Header from './Header';
+
 import Sidebar from './Sidebar';
 import '../../styles/layout.css';
+import '../../styles/page.css';
+import { Link } from 'react-router-dom';
+import { FiUser } from 'react-icons/fi';
 
 const Layout: React.FC<{ children?: React.ReactNode }> = ({ children }) => (
   <div className="layout">
-    <Header />
+
+  
     <div className="layout-content">
       <Sidebar />
       <main className="main-content">
-        {children ?? <Outlet />}
+        <div className="page-container">
+          {children ?? <Outlet />}
+        </div>
       </main>
     </div>
   </div>

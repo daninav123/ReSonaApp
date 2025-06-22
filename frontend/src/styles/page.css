@@ -1,0 +1,165 @@
+@import './variables.css';
+
+/* Global page container */
+.page-container {
+  padding: var(--spacing-md);
+  background-color: var(--color-background, #f8fafc);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Page title */
+.page-container h1 {
+  font-size: 20px;
+  font-family: var(--font-family, 'Arial', sans-serif);
+  color: var(--color-primary);
+  margin-top: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  text-align: left;
+  height: var(--sidebar-logo-height);
+  line-height: var(--sidebar-logo-height);
+}
+
+/* Controls section */
+.page-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+/* Inline form controls */
+.form-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+/* Vertical form controls */
+.form-vertical {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+/* Form control (inputs/selects) */
+.form-control {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius);
+  border: 1px solid #ccc;
+  font-size: var(--font-size-base);
+}
+
+/* Card actions (e.g., budgets, clients) */
+.card-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: auto;
+}
+
+/* Unified card container */
+.budget-card,
+.client-card,
+.material-card,
+.event-card,
+.user-card {
+  background: var(--color-background, #fff);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Unified card title and text */
+.budget-card h3,
+.client-card h3,
+.event-card h3,
+.user-card h3,
+.material-card h3 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  color: var(--color-text-primary, #333);
+}
+
+.budget-card p,
+.client-card p,
+.event-card span,
+.user-card p,
+.material-card p {
+  margin: var(--spacing-sm) 0;
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary, #555);
+}
+
+/* Unified controls across pages */
+.budgets-controls,
+.clients-controls,
+.materials-controls,
+.users-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+/* Notifications page and cards */
+.notifications-page {
+}
+.notification-card {
+  background: var(--color-background, #fff);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+.notification-card.read {
+  opacity: 0.6;
+}
+
+/* Audit Log page styles */
+.text-muted {
+  color: var(--color-text-secondary, #888);
+}
+.pre-wrap {
+  font-size: 0.75rem;
+  max-width: 220px;
+  white-space: pre-wrap;
+}
+
+/* Tasks page styles */
+.tasks-list {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+.task-card {
+  background: var(--color-background, #fff);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+.task-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+.modal-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
+}
+
+/* Button variants */
+.btn-danger {
+  background-color: var(--color-danger, #dc3545);
+  color: #fff;
+}
+

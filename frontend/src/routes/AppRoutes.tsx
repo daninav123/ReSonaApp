@@ -4,6 +4,7 @@ import Layout from '../components/layout/Layout';
 import LoginPage from '../pages/LoginPage';
 import ClientsPage from '../pages/ClientsPage';
 import DashboardPage from '../pages/DashboardPage';
+import AuditLogsPage from '../pages/AuditLogsPage';
 
 const AppRoutes: React.FC = () => (
   <Routes>
@@ -12,6 +13,8 @@ const AppRoutes: React.FC = () => (
       <Route index element={<Navigate to="/dashboard" />} />
       <Route path="dashboard" element={<DashboardPage />} />
       <Route path="clients" element={<ClientsPage />} />
+      <Route path="budgets" element={localStorage.getItem('token') ? <BudgetsPage /> : <Navigate to="/login" replace />} />
+      <Route path="auditlogs" element={<AuditLogsPage />} />
       {/* Otras rutas hijas aquí */}
     </Route>
     <Route path="*" element={<Navigate to="/login" replace />} />
