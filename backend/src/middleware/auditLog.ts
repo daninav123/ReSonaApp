@@ -6,18 +6,18 @@ export async function logAudit({
   action,
   entity,
   entityId,
-  details,
-  ip
+  ipAddress,
+  userAgent
 }: {
   userId?: string;
   action: string;
   entity: string;
   entityId?: string;
-  details?: any;
-  ip?: string;
+  ipAddress?: string;
+  userAgent?: string;
 }) {
   try {
-    await AuditLog.create({ userId, action, entity, entityId, details, ip });
+    await AuditLog.create({ userId, action, entity, entityId, ipAddress, userAgent });
   } catch (err) {
     // No lanzar error, solo loguear
     console.error('AuditLog error:', err);
@@ -37,8 +37,8 @@ export function auditLogMiddleware(action: string, entity: string) {
           action,
           entity,
           entityId,
-          details: { body: req.body },
-          ip: req.ip
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'] as string
         });
       }
     });

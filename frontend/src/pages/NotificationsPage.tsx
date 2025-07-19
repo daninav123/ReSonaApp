@@ -19,7 +19,7 @@ const categoryLabel: Record<string, string> = {
 };
 const categoryColor: Record<string, string> = {
   general: '#2563eb',
-  alert: '#ef4444',
+  alert: 'var(--color-danger)',
   recordatorio: '#f59e42',
   sistema: '#6366f1',
 };
@@ -66,7 +66,7 @@ const NotificationsPage: React.FC = () => {
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               {!n.read && <Button onClick={() => handleMarkRead(n.id, true)} title="Marcar como leído"><FiCheckCircle /></Button>}
               {n.read && <Button onClick={() => handleMarkRead(n.id, false)} title="Marcar como no leído" style={{ background: '#2563eb' }}><FiBell /></Button>}
-              <Button onClick={() => handleArchive(n.id)} title="Archivar" style={{ background: '#ef4444' }}><FiArchive /></Button>
+              <Button onClick={() => handleArchive(n.id)} title="Archivar" style={{ background: 'var(--color-danger)' }}><FiArchive /></Button>
             </div>
           </li>
         ))}

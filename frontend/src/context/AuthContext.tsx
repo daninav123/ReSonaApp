@@ -1,6 +1,8 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useEffect, useContext, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { login as loginAction, logout as logoutAction, selectCurrentToken } from '../store/slices/authSlice';
 
 interface AuthContextType {
   token: string | null;
@@ -15,37 +17,58 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const dispatch = useAppDispatch();
+  const token = useAppSelector(selectCurrentToken);
   const navigate = useNavigate();
 
+  // Initialize token from localStorage on mount
   useEffect(() => {
-    const stored = localStorage.getItem('token');
-    if (stored) setToken(stored);
-  }, []);
-
-  const login = async (email: string, password: string) => {
-    const res = await fetch('http://localhost:5000/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(data.message || 'Login failed');
+    const storedToken = localStorage.getItem('token');
+    if (storedToken && !token) {
+      // If we have a token in localStorage but not in Redux, update Redux
+      dispatch({ type: 'auth/setToken', payload: { token: storedToken } });
     }
-    const data = await res.json();
-    setToken(data.token);
-    localStorage.setItem('token', data.token);
-  };
+  }, [dispatch, token]);
 
-  const logout = () => {
-    setToken(null);
+  const login = useCallback(async (email: string, password: string) => {
+    console.log('Attempting login with:', { email });
+    try {
+      const resultAction = await dispatch(loginAction({ email, password }));
+      
+      if (loginAction.fulfilled.match(resultAction)) {
+        console.log('Login successful, token received');
+        const token = resultAction.payload.token;
+        localStorage.setItem('token', token);
+        console.log('Token stored, redirecting...');
+        navigate('/dashboard');
+      } else {
+        throw new Error(resultAction.error.message || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
+  }, [dispatch, navigate]);
+
+  const logout = useCallback(() => {
+    dispatch(logoutAction());
     localStorage.removeItem('token');
     navigate('/login');
-  };
+  }, [dispatch, navigate]);
 
-  return <AuthContext.Provider value={{ token, login, logout }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ token, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
 export default AuthContext;

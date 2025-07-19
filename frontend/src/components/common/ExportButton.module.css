@@ -1,0 +1,94 @@
+.exportContainer {
+  position: relative;
+  display: inline-block;
+}
+
+.exportButton {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.exportOptions {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 5px;
+  min-width: 200px;
+  background-color: white;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  overflow: hidden;
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+.exportOptionsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  transition: color 0.2s;
+}
+
+.closeButton:hover {
+  color: #333;
+}
+
+.exportOption {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.exportOption:hover {
+  background-color: #f5f5f5;
+}
+
+.exportIcon {
+  margin-right: 8px;
+  font-size: 1.2rem;
+}
+
+.exportOption:nth-child(2) .exportIcon {
+  color: #d32f2f; /* Color rojo para PDF */
+}
+
+.exportOption:nth-child(3) .exportIcon {
+  color: #388e3c; /* Color verde para Excel */
+}
+
+.exportOption:nth-child(4) .exportIcon {
+  color: #0288d1; /* Color azul para CSV */
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

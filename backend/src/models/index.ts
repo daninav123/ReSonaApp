@@ -283,3 +283,86 @@ const NotificationSchema = new Schema<INotification>(
   { timestamps: true }
 );
 export const Notification = model<INotification>('Notification', NotificationSchema);
+
+// ---------------- Provider ----------------
+export interface IProvider extends Document {
+  name: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  address: string;
+  website?: string;
+  taxId: string;
+  category: string[];
+  rating: number;
+  status: 'active' | 'inactive' | 'pending';
+  paymentTerms: string;
+  notes: string;
+  products: Array<{
+    _id?: Types.ObjectId;
+    name: string;
+    code: string;
+    price: number;
+    description?: string;
+    category?: string;
+  }>;
+  documents: Array<{
+    _id?: Types.ObjectId;
+    name: string;
+    type: string;
+    url: string;
+    uploadDate: Date;
+  }>;
+  history: Array<{
+    _id?: Types.ObjectId;
+    date: Date;
+    action: string;
+    description: string;
+    user: Types.ObjectId;
+  }>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const ProviderSchema = new Schema<IProvider>(
+  {
+    name: { type: String, required: true },
+    contactPerson: { type: String, required: true },
+    email: { type: String, required: true },
+    phone: { type: String, required: true },
+    address: { type: String, required: true },
+    website: String,
+    taxId: { type: String, required: true },
+    category: [{ type: String }],
+    rating: { type: Number, default: 0 },
+    status: { 
+      type: String, 
+      enum: ['active', 'inactive', 'pending'], 
+      default: 'pending' 
+    },
+    paymentTerms: { type: String, default: '' },
+    notes: { type: String, default: '' },
+    products: [{
+      name: { type: String, required: true },
+      code: { type: String, required: true },
+      price: { type: Number, required: true },
+      description: String,
+      category: String
+    }],
+    documents: [{
+      name: { type: String, required: true },
+      type: { type: String, required: true },
+      url: { type: String, required: true },
+      uploadDate: { type: Date, default: Date.now }
+    }],
+    history: [{
+      date: { type: Date, default: Date.now },
+      action: { type: String, required: true },
+      description: { type: String, required: true },
+      user: { type: Schema.Types.ObjectId, ref: 'User' }
+    }]
+  },
+  { timestamps: true }
+);
+
+export const Provider = model<IProvider>('Provider', ProviderSchema);

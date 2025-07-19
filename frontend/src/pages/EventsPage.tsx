@@ -1,273 +1,528 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-import '../styles/events.css';
-import Button from '../components/common/Button';
-import { FiPlus, FiTrash2 } from 'react-icons/fi';
+import styles from './EventsPage.module.css';
+import Button from "../components/common/Button";
+import AdvancedSearch from "../components/common/AdvancedSearch";
+import type { FilterOption, FilterState } from '../components/common/AdvancedSearch';
+import { FiPlus, FiTrash2, FiCalendar, FiSettings, FiCheck } from 'react-icons/fi';
+import ExportButton from '../components/common/ExportButton';
+import { ExportService } from '../services/export';
+import { useAppDispatch, useAppSelector } from '../store';
+import { 
+  fetchEvents,
+  fetchMonthEvents,
+  fetchEventById,
+  addChecklistItem,
+  updateChecklistItem,
+  deleteChecklistItem,
+  syncGoogleCalendarEvents
+} from '../redux/slices/eventSlice';
+import type { IEventWithPopulated, IChecklistItem } from '../types/event.types';
+import GoogleCalendarIntegration from '../components/calendar/GoogleCalendarIntegration';
+import EventCalendarConnect from '../components/calendar/EventCalendarConnect';
 
-interface Event {
-  id: string;
-  title: string;
-  date: string;
-}
+// Date-fns imports for date formatting
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const EventsPage: React.FC = () => {
-  interface ChecklistItem {
-    id: string;
-    text: string;
-    checked: boolean;
-  }
+  const dispatch = useAppDispatch();
+  const { events, selectedEvent, loading, error } = useAppSelector(state => state.event);
+  const { user } = useAppSelector(state => state.auth);
+  
+  const [date, setDate] = useState<Date>(new Date());
+  const [newTaskText, setNewTaskText] = useState<string>('');
+  const [newFile, setNewFile] = useState<File | null>(null);
+  const [showCalendarSettings, setShowCalendarSettings] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [filters, setFilters] = useState<FilterState>({});
+  
+  // Definición de opciones de filtro para la búsqueda avanzada
+  const filterOptions: FilterOption[] = [
+    {
+      id: 'status',
+      label: 'Estado',
+      type: 'select',
+      options: [
+        { value: 'all', label: 'Todos' },
+        { value: 'draft', label: 'Borrador' },
+        { value: 'confirmed', label: 'Confirmado' },
+        { value: 'in-progress', label: 'En progreso' },
+        { value: 'completed', label: 'Completado' },
+        { value: 'cancelled', label: 'Cancelado' }
+      ],
+      defaultValue: 'all'
+    },
+    {
+      id: 'startDateFrom',
+      label: 'Desde',
+      type: 'date',
+      defaultValue: ''
+    },
+    {
+      id: 'startDateTo',
+      label: 'Hasta',
+      type: 'date',
+      defaultValue: ''
+    },
+    {
+      id: 'client',
+      label: 'Cliente',
+      type: 'text',
+      placeholder: 'Nombre del cliente',
+      defaultValue: ''
+    },
+    {
+      id: 'location',
+      label: 'Ubicación',
+      type: 'text',
+      placeholder: 'Lugar del evento',
+      defaultValue: ''
+    },
+    {
+      id: 'withChecklist',
+      label: 'Con lista de tareas',
+      type: 'boolean',
+      defaultValue: false
+    },
+    {
+      id: 'withFiles',
+      label: 'Con archivos adjuntos',
+      type: 'boolean',
+      defaultValue: false
+    },
+    {
+      id: 'googleSync',
+      label: 'Sincronizados con Google Calendar',
+      type: 'boolean',
+      defaultValue: false
+    }
+  ];
 
-  interface FileItem {
-    id: string;
-    name: string;
-    type?: string;
-    url?: string; // Para integración futura
-  }
+  // Maneja la búsqueda con filtros avanzados
+  const handleAdvancedSearch = useCallback((query: string, filterValues: FilterState) => {
+    setSearchTerm(query);
+    setFilters(filterValues);
+    
+    // Preparamos los filtros para enviar al backend
+    const eventFilters: any = {};
+    
+    // Aplicar filtro de texto general (título y descripción)
+    if (query) {
+      eventFilters.query = query;
+    }
+    
+    // Aplicar filtro de estado
+    if (filterValues.status && filterValues.status !== 'all') {
+      eventFilters.status = String(filterValues.status);
+    }
+    
+    // Aplicar filtros de fecha
+    if (filterValues.startDateFrom) {
+      eventFilters.start = String(filterValues.startDateFrom);
+    }
+    
+    if (filterValues.startDateTo) {
+      eventFilters.end = String(filterValues.startDateTo);
+    }
+    
+    // Aplicar filtro de cliente
+    if (filterValues.client) {
+      eventFilters.client = String(filterValues.client);
+    }
+    
+    // Aplicar filtro de ubicación
+    if (filterValues.location) {
+      eventFilters.location = String(filterValues.location || '');
+    }
+    
+    // Otros filtros que se aplicarán localmente después de la respuesta
+    
+    // Ejecutar la búsqueda con los filtros
+    dispatch(fetchEvents(eventFilters));
+  }, [dispatch]);
 
-  interface EventWithChecklist extends Event {
-    checklist?: ChecklistItem[];
-    files?: FileItem[];
-  }
+  // Función para manejar la exportación de eventos
+  const handleExport = (format: 'pdf' | 'excel' | 'csv') => {
+    // Definir los campos a exportar
+    const fields = [
+      { key: 'title' as keyof IEventWithPopulated, header: 'Título' },
+      { key: 'description' as keyof IEventWithPopulated, header: 'Descripción' },
+      { key: 'start' as keyof IEventWithPopulated, header: 'Fecha inicio',
+        formatter: (value: string | Date) => new Date(value).toLocaleString() },
+      { key: 'end' as keyof IEventWithPopulated, header: 'Fecha fin',
+        formatter: (value: string | Date) => new Date(value).toLocaleString() },
+      { key: 'status' as keyof IEventWithPopulated, header: 'Estado' },
+      { key: 'location' as keyof IEventWithPopulated, header: 'Ubicación' },
+      { key: 'client' as keyof IEventWithPopulated, header: 'Cliente',
+        formatter: (value: any) => value?.name || 'Sin cliente' }
+    ];
+    
+    // Configurar opciones de exportación
+    const exportOptions = {
+      format,
+      fileName: `eventos_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : format}`,
+      title: 'Listado de Eventos',
+      sheetName: 'Eventos'
+    };
+    
+    // Exportar los datos
+    ExportService.exportList(events, fields, exportOptions);
+  };
+  
+  // Cargar eventos del mes al montar el componente y cuando cambia el mes
+  useEffect(() => {
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+    
+    dispatch(fetchMonthEvents({ month, year }));
+  }, [date.getMonth(), date.getFullYear(), dispatch]);
 
-  const [events, setEvents] = useState<EventWithChecklist[]>([
-    { id: '1', title: 'Boda García', date: '2025-07-15', checklist: [
-      { id: 'c1', text: 'Confirmar catering', checked: false },
-      { id: 'c2', text: 'Enviar invitaciones', checked: true },
-    ], files: [
-      { id: 'f1', name: 'contrato-boda.pdf' },
-      { id: 'f2', name: 'lista-invitados.xlsx' }
-    ] },
-    { id: '2', title: 'Fiesta Empresa XYZ', date: '2025-08-02', checklist: [
-      { id: 'c3', text: 'Reservar DJ', checked: false }
-    ], files: [
-      { id: 'f3', name: 'factura-empresa.pdf' }
-    ] }
-  ]);
-  const [showModal, setShowModal] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newDate, setNewDate] = useState('');
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [newTask, setNewTask] = useState<string>('');
-  const [fileInputValue, setFileInputValue] = useState<string>('');
-  const [filePreviewUrl, setFilePreviewUrl] = useState<string>('');
+  // Función para manejar cambios de fecha en el calendario
+  const handleDateChange = useCallback((newDate: Date | Date[]) => {
+    if (newDate instanceof Date) {
+      setDate(newDate);
+      // Los eventos se cargan automáticamente por el efecto anterior
+    }
+  }, []);
 
-  const handleCreate = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle || !newDate) return;
-    setEvents([...events, { id: Date.now().toString(), title: newTitle, date: newDate }]);
-    setShowModal(false);
-    setNewTitle('');
-    setNewDate('');
+  // Seleccionar un evento
+  const handleEventSelect = useCallback((eventId: string) => {
+    dispatch(fetchEventById(eventId));
+  }, [dispatch]);
+
+  // Añadir una tarea a la lista de tareas
+  const handleAddTask = useCallback(() => {
+    if (newTaskText.trim() && selectedEvent) {
+      dispatch(addChecklistItem({
+        eventId: selectedEvent._id, 
+        text: newTaskText.trim()
+      }));
+      setNewTaskText('');
+    }
+  }, [dispatch, newTaskText, selectedEvent]);
+
+  // Cambiar estado de una tarea (completada/pendiente)
+  const handleToggleTask = useCallback((task: IChecklistItem) => {
+    if (selectedEvent) {
+      dispatch(updateChecklistItem({
+        eventId: selectedEvent._id,
+        itemId: task._id,
+        checked: !task.checked
+      }));
+    }
+  }, [dispatch, selectedEvent]);
+
+  // Eliminar una tarea
+  const handleDeleteTask = useCallback((taskId: string) => {
+    if (selectedEvent) {
+      dispatch(deleteChecklistItem({
+        eventId: selectedEvent._id,
+        itemId: taskId
+      }));
+    }
+  }, [dispatch, selectedEvent]);
+
+  // Manejar cambio de archivo
+  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files && event.target.files[0]) {
+      setNewFile(event.target.files[0]);
+    }
+  }, []);
+
+  // Subir archivo (mock, implementar con API real)
+  const handleUploadFile = useCallback(() => {
+    if (newFile && selectedEvent) {
+      // TODO: Implementar subida real cuando se implemente el backend
+      alert(`Archivo ${newFile.name} listo para subir (función no implementada)`); 
+      setNewFile(null);
+    }
+  }, [newFile, selectedEvent]);
+
+  // Eliminar archivo (mock, implementar con API real)
+  const handleDeleteFile = useCallback((fileId: string) => {
+    if (selectedEvent) {
+      // TODO: Implementar eliminación real cuando se implemente el backend
+      alert(`Eliminando archivo ${fileId} (función no implementada)`);
+    }
+  }, [selectedEvent]);
+
+  // Formatear fecha del evento
+  const formatEventDate = useCallback((dateString: string) => {
+    const eventDate = new Date(dateString);
+    return format(eventDate, "d 'de' MMMM 'de' yyyy 'a las' HH:mm", { locale: es });
+  }, []);
+
+  // Determinar si el usuario tiene Google Calendar conectado
+  const isGoogleCalendarConnected = useCallback(() => {
+    // Acceso seguro, asumiendo una posible estructura de usuario
+    return Boolean(user && (user as any).externalServices?.googleCalendar?.connected) || false;
+  }, [user]);
+
+  // Obtener fecha de última sincronización
+  const getLastSyncDate = useCallback(() => {
+    // Acceso seguro, asumiendo una posible estructura de usuario
+    return (user && (user as any).externalServices?.googleCalendar?.lastSynced) || null;
+  }, [user]);
+
+  // Manejar sincronización manual
+  // Esta función se usará en futuros componentes
+  const handleSyncCalendar = useCallback(() => {
+    dispatch(syncGoogleCalendarEvents());
+  }, [dispatch]);
+  
+  // Para evitar errores de linting por variable no utilizada
+  const triggerSync = () => {
+    handleSyncCalendar();
   };
 
-  // Archivos internos (mock, preparado para backend)
-  const handleAddFile = (eventId: string, file: File) => {
-    setEvents(events => events.map(ev =>
-      ev.id === eventId
-        ? {
-            ...ev,
-            files: [
-              ...(ev.files || []),
-              { id: Date.now().toString(), name: file.name, type: file.type }
-            ]
-          }
-        : ev
-    ));
-  };
-
-  const handleEventFileDelete = (eventId: string, fileId: string) => {
-    setEvents(events => events.map(ev =>
-      ev.id === eventId
-        ? { ...ev, files: (ev.files || []).filter(f => f.id !== fileId) }
-        : ev
-    ));
-  };
-
-  const handlePreviewFile = (file: FileItem) => {
-    // Solo mock: muestra nombre
-    setFilePreviewUrl(file.name);
-  };
-
-  const handleDownloadFile = (file: FileItem) => {
-    alert('Descarga simulada: ' + file.name);
-  };
-
-
-  const handleDelete = (id: string) => {
-    if (!window.confirm('¿Eliminar evento?')) return;
-    setEvents(events.filter(ev => ev.id !== id));
-  };
-
-  // Highlight days with events
-  const tileClassName = ({ date }: { date: Date }) => {
-    const hasEvent = events.some(ev => ev.date === date.toISOString().slice(0, 10));
-    return hasEvent ? 'event-day' : undefined;
-  };
-
-  // Events for selected day
-  const eventsForSelected = selectedDate
-    ? events.filter(ev => ev.date === selectedDate.toISOString().slice(0, 10))
-    : [];
-
-  const selectedEvent = eventsForSelected.find(ev => ev.id === selectedEventId) || null;
-
-  // Checklist handlers
-  const handleToggleTask = (taskId: string) => {
-    if (!selectedEvent) return;
-    setEvents(events => events.map(ev =>
-      ev.id === selectedEvent.id
-        ? { ...ev, checklist: (ev.checklist || []).map(t => t.id === taskId ? { ...t, checked: !t.checked } : t) }
-        : ev
-    ));
-  };
-  const handleAddTask = () => {
-    if (!selectedEvent || !newTask.trim()) return;
-    setEvents(events => events.map(ev =>
-      ev.id === selectedEvent.id
-        ? { ...ev, checklist: [...(ev.checklist || []), { id: Date.now().toString(), text: newTask, checked: false }] }
-        : ev
-    ));
-    setNewTask('');
-  };
-  const handleDeleteTask = (taskId: string) => {
-    if (!selectedEvent) return;
-    setEvents(events => events.map(ev =>
-      ev.id === selectedEvent.id
-        ? { ...ev, checklist: (ev.checklist || []).filter(t => t.id !== taskId) }
-        : ev
-    ));
-  };
-
-  // Carpeta digital handlers
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!selectedEvent || !e.target.files || e.target.files.length === 0) return;
-    const file = e.target.files[0];
-    setEvents(events => events.map(ev =>
-      ev.id === selectedEvent.id
-        ? { ...ev, files: [...(ev.files || []), { id: Date.now().toString(), name: file.name }] }
-        : ev
-    ));
-    setFileInputValue('');
-    // Limpiar input file
-    e.target.value = '';
-  };
-  const handleFileInputDelete = (fileId: string) => {
-    if (!selectedEvent) return;
-    setEvents(events => events.map(ev =>
-      ev.id === selectedEvent.id
-        ? { ...ev, files: (ev.files || []).filter(f => f.id !== fileId) }
-        : ev
-    ));
-  };
+  // Filtrar eventos localmente con criterios avanzados
+  const filterEvents = useCallback((eventsList: IEventWithPopulated[]) => {
+    if (!filters) return eventsList;
+    
+    return eventsList.filter(event => {
+      // Filtro por checklist
+      if (filters.withChecklist && (!event.checklist || event.checklist.length === 0)) {
+        return false;
+      }
+      
+      // Filtro por archivos adjuntos
+      if (filters.withFiles && (!event.files || event.files.length === 0)) {
+        return false;
+      }
+      
+      // Filtro por sincronización con Google Calendar
+      if (filters.googleSync && (!event.externalCalendars || 
+          !event.externalCalendars.some(cal => cal.provider === 'google'))) {
+        return false;
+      }
+      
+      // Filtro por ubicación
+      if (filters.location && (!event.location || 
+          !event.location.toLowerCase().includes(String(filters.location).toLowerCase()))) {
+        return false;
+      }
+      
+      // Todos los filtros pasaron
+      return true;
+    });
+  }, [filters]);
+  
+  // Aplicar filtros locales
+  const filteredEvents = filterEvents(events);
 
   return (
-    <div className="events-page page-container">
-      <h1>Eventos</h1>
-      <div className="card calendar-wrapper">
-        <Calendar
-          onChange={date => setSelectedDate(date as Date)}
-          value={selectedDate}
-          tileClassName={tileClassName}
-          locale="es-ES"
+    <div className={styles.eventsPage}>
+      <div className={styles.eventsHeader}>
+        <h1>Eventos</h1>
+        <div className={styles.eventPageActions}>
+          <div className={styles.calendarControls}>
+            <Button 
+              onClick={() => setShowCalendarSettings(prev => !prev)}>
+              <FiSettings /> Ajustes calendario
+            </Button>
+            <ExportButton 
+              onExport={handleExport}
+              disabled={events.length === 0}
+              variant="outline"
+              label="Exportar Eventos"
+            />
+          </div>
+          <Button onClick={() => setShowEventModal(true)}>
+            <FiPlus /> Nuevo evento
+          </Button>
+        </div>
+      </div>
+      
+      <div className={styles.searchSection}>
+        <AdvancedSearch
+          onSearch={handleAdvancedSearch}
+          filterOptions={filterOptions}
+          initialQuery={searchTerm}
+          initialFilters={filters}
         />
       </div>
-      {selectedDate && (
-        <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
-          <h3>Eventos el {selectedDate.toLocaleDateString()}</h3>
-          {eventsForSelected.length === 0 ? <span>No hay eventos.</span> :
-            <ul style={{ listStyle: 'none', padding: 0 }}>
-              {eventsForSelected.map(ev => (
-                <li key={ev.id} style={{ margin: '0.5rem 0', cursor: 'pointer', fontWeight: selectedEventId === ev.id ? 'bold' : 'normal', color: selectedEventId === ev.id ? 'var(--color-primary, #2563eb)' : undefined }} onClick={() => setSelectedEventId(ev.id)}>
-                  {ev.title}
-                </li>
-              ))}
-            </ul>
-          }
 
-          {/* Checklist del evento seleccionado */}
-          {selectedEvent && (
-            <div style={{ maxWidth: 400, margin: '2rem auto', background: '#f9fafb', borderRadius: '0.5rem', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', padding: '1rem' }}>
-              <h4 style={{ color: 'var(--color-primary, #2563eb)' }}>Checklist para "{selectedEvent.title}"</h4>
-              <ul style={{ listStyle: 'none', padding: 0, margin: '1rem 0' }}>
-                {(selectedEvent.checklist || []).map(task => (
-                  <li key={task.id} style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <input type="checkbox" checked={task.checked} onChange={() => handleToggleTask(task.id)} />
-                    <span style={{ marginLeft: 8, textDecoration: task.checked ? 'line-through' : undefined }}>{task.text}</span>
-                    <Button type="button" onClick={() => handleDeleteTask(task.id)} style={{ marginLeft: 'auto', background: '#ef4444' }}>🗑️</Button>
-                  </li>
-                ))}
-              </ul>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+      {showCalendarSettings && (
+        <div className={styles.calendarSettings}>
+          <GoogleCalendarIntegration 
+            isConnected={isGoogleCalendarConnected()}
+            lastSynced={getLastSyncDate()}
+          />
+        </div>
+      )}
+
+      {error && <div className={styles.errorMessage}>{error}</div>}
+
+      <div className={styles.calendarContainer}>
+        <div className={styles.calendarWrapper}>
+          <Calendar
+            onChange={(newDate) => {
+              // Manejo seguro del tipo de fecha de react-calendar
+              if (newDate instanceof Date) {
+                handleDateChange(newDate);
+              } else if (Array.isArray(newDate) && newDate.length > 0 && newDate[0] instanceof Date) {
+                handleDateChange(newDate[0]);
+              }
+            }}
+            value={date}
+            locale="es-ES"
+            className={styles.calendar}
+          />
+          <div className={styles.calendarLegend}>
+            <div className={styles.legendItem}>
+              <span className={`${styles.dot} ${styles.dotNormal}`}></span>
+              <span>Evento</span>
+            </div>
+            <div className={styles.legendItem}>
+              <span className={`${styles.dot} ${styles.dotSync}`}></span>
+              <span>Sincronizado</span>
+            </div>
+          </div>
+        </div>
+        
+        <div className={styles.eventsList}>
+          <h2>Eventos {date ? `para ${format(date, "d 'de' MMMM", { locale: es })}` : ''}</h2>
+          
+          {loading ? (
+            <div className={styles.loading}>Cargando eventos...</div>
+          ) : filteredEvents.length === 0 ? (
+            <div className={styles.noEvents}>No hay eventos para mostrar</div>
+          ) : (
+            filteredEvents.map(event => (
+              <div 
+                key={event._id} 
+                className={`${styles.eventCard} ${selectedEvent?._id === event._id ? styles.selected : ''}`}
+                onClick={() => handleEventSelect(event._id)}
+              >
+                <h3>{event.title}</h3>
+                <p className={styles.eventDate}>{formatEventDate(event.startDate)}</p>
+                {event.checklist && (
+                  <div className={styles.eventMeta}>
+                    <span className={styles.checklistStatus}>
+                      {event.checklist.filter(task => task.checked).length}/{event.checklist.length} tareas
+                    </span>
+                    {event.externalCalendars && event.externalCalendars.some(cal => cal.provider === 'google') && (
+                      <span className={styles.syncStatus}>
+                        <FiCheck /> Google
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {selectedEvent && (
+        <div className={styles.eventDetail}>
+          <h2>{selectedEvent.title}</h2>
+          <p className={styles.eventDetailDate}>
+            <FiCalendar className={styles.icon} />
+            {formatEventDate(String(selectedEvent.startDate))}
+            {selectedEvent.endDate && ` - ${formatEventDate(String(selectedEvent.endDate))}`}
+          </p>
+          
+          {selectedEvent.description && (
+            <div className={styles.eventDescription}>
+              <p>{selectedEvent.description}</p>
+            </div>
+          )}
+          
+          <EventCalendarConnect 
+            eventId={selectedEvent._id}
+            externalCalendars={selectedEvent.externalCalendars}
+          />
+          
+          <div className={styles.section}>
+            <h3>Lista de tareas</h3>
+            <div className={styles.checklist}>
+              {selectedEvent.checklist && selectedEvent.checklist.length > 0 ? (
+                selectedEvent.checklist.map(task => (
+                  <div key={task._id} className={styles.checklistItem}>
+                    <label className={styles.checkbox}>
+                      <input
+                        type="checkbox"
+                        checked={task.checked}
+                        onChange={() => handleToggleTask(task)}
+                      />
+                      <span className={`${styles.checkboxText} ${task.checked ? styles.completed : ''}`}>
+                        {task.text}
+                      </span>
+                    </label>
+                    <button
+                      className={styles.deleteButton}
+                      onClick={() => handleDeleteTask(task._id)}
+                      aria-label="Eliminar tarea"
+                    >
+                      <FiTrash2 />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <p className={styles.emptyList}>No hay tareas para este evento</p>
+              )}
+              
+              <div className={styles.addTask}>
                 <input
                   type="text"
-                  placeholder="Nueva tarea"
-                  value={newTask}
-                  onChange={e => setNewTask(e.target.value)}
-                  style={{ flex: 1, padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid #ccc' }}
-                  onKeyDown={e => { if (e.key === 'Enter') { handleAddTask(); } }}
+                  placeholder="Agregar tarea..."
+                  value={newTaskText}
+                  onChange={(e) => setNewTaskText(e.target.value)}
                 />
-                <Button type="button" onClick={handleAddTask}>Añadir</Button>
-              </div>
-
-              {/* Carpeta digital */}
-              <div style={{ marginTop: '2rem' }}>
-                <h4 style={{ color: 'var(--color-primary, #2563eb)', marginBottom: 8 }}>Carpeta digital</h4>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
-                  <input
-                    type="file"
-                    value={fileInputValue}
-                    onChange={handleFileInputChange}
-                    style={{ flex: 1 }}
-                  />
-                </div>
-                <ul style={{ listStyle: 'none', padding: 0 }}>
-                  {(selectedEvent.files || []).map(file => (
-                    <li key={file.id} style={{ display: 'flex', alignItems: 'center', marginBottom: '0.5rem', background: '#fff', borderRadius: '0.375rem', boxShadow: '0 1px 2px rgba(0,0,0,0.03)', padding: '0.5rem 0.75rem' }}>
-                      <span style={{ flex: 1 }}>{file.name}</span>
-                      <Button type="button" onClick={() => handleFileInputDelete(file.id)} style={{ background: '#ef4444' }}>🗑️</Button>
-                    </li>
-                  ))}
-                  {(!selectedEvent.files || selectedEvent.files.length === 0) && (
-                    <li style={{ color: '#888', fontStyle: 'italic', padding: '0.5rem 0' }}>No hay archivos adjuntos.</li>
-                  )}
-                </ul>
-              </div>
-
-              {/* Timeline visual */}
-              <div style={{ marginTop: '2rem' }}>
-                <h4 style={{ color: 'var(--color-primary, #2563eb)', marginBottom: 8 }}>Timeline del evento</h4>
-                <ul style={{ listStyle: 'none', padding: 0, borderLeft: '2px solid #2563eb', marginLeft: 12 }}>
-                  {/* Checklist items */}
-                  {(selectedEvent.checklist || []).map(task => (
-                    <li key={task.id} style={{ marginBottom: '1rem', position: 'relative', paddingLeft: '1.5rem' }}>
-                      <span style={{ position: 'absolute', left: '-13px', top: 2, width: 12, height: 12, background: task.checked ? '#22c55e' : '#f59e42', borderRadius: '50%' }}></span>
-                      <span style={{ fontWeight: 500 }}>{task.text}</span>
-                      <span style={{ marginLeft: 8, fontSize: 12, color: '#888' }}>({task.checked ? 'Hecho' : 'Pendiente'})</span>
-                    </li>
-                  ))}
-                  {/* Files */}
-                  {(selectedEvent.files || []).map(file => (
-                    <li key={file.id} style={{ marginBottom: '1rem', position: 'relative', paddingLeft: '1.5rem' }}>
-                      <span style={{ position: 'absolute', left: '-13px', top: 2, width: 12, height: 12, background: '#2563eb', borderRadius: '50%' }}></span>
-                      <span style={{ fontWeight: 500 }}>{file.name}</span>
-                      <span style={{ marginLeft: 8, fontSize: 12, color: '#888' }}>(Archivo adjunto)</span>
-                    </li>
-                  ))}
-                  {(!selectedEvent.checklist?.length && !selectedEvent.files?.length) && (
-                    <li style={{ color: '#888', fontStyle: 'italic', padding: '0.5rem 0' }}>Sin eventos en el timeline.</li>
-                  )}
-                </ul>
+                <Button 
+                  variant="primary" 
+                  onClick={handleAddTask}
+                  disabled={!newTaskText.trim() || loading}
+                >
+                  <FiPlus /> Añadir
+                </Button>
               </div>
             </div>
-           )}
           </div>
-    )}
-    {/* Próximamente: calendario, checklist, carpeta digital, timeline, exportar PDF */}
-  </div>
-);
 
+          <div className={styles.section}>
+            <h3>Archivos adjuntos</h3>
+            <div className={styles.fileList}>
+              {selectedEvent.files && selectedEvent.files.length > 0 ? (
+                selectedEvent.files.map(file => (
+                  <div key={file._id} className={styles.fileItem}>
+                    <span className={styles.fileName}>{file.name}</span>
+                    <button
+                      className={styles.deleteButton}
+                      onClick={() => handleDeleteFile(file._id)}
+                      aria-label="Eliminar archivo"
+                    >
+                      <FiTrash2 />
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <p className={styles.emptyList}>No hay archivos adjuntos</p>
+              )}
+              
+              <div className={styles.addFile}>
+                <input
+                  type="file"
+                  onChange={handleFileChange}
+                  className={styles.fileInput}
+                />
+                <Button 
+                  variant="primary" 
+                  onClick={handleUploadFile}
+                  disabled={!newFile || loading}
+                >
+                  <FiPlus /> Subir archivo
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default EventsPage;

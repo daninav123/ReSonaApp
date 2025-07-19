@@ -1,13 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import '../styles/users.css';
 import Button from '../components/common/Button';
-import { FiPlus, FiTrash2, FiEdit2, FiRefreshCw } from 'react-icons/fi';
+import UserRoleSelector from '../components/admin/UserRoleSelector';
+import { FiPlus, FiTrash2, FiEdit2, FiRefreshCw, FiUserCheck } from 'react-icons/fi';
+import { Link } from 'react-router-dom';
 
 interface User {
   _id: string;
   name: string;
   email: string;
   roles: string[];
+  createdAt?: string;
+  lastLogin?: string;
 }
 
 const UsersPage: React.FC = () => {
@@ -19,16 +23,14 @@ const UsersPage: React.FC = () => {
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [newRoles, setNewRoles] = useState('');
-  const [newRoleField, setNewRoleField] = useState('');
+  const [newRoles, setNewRoles] = useState<string[]>([]);
   const [editingId, setEditingId] = useState('');
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editPassword, setEditPassword] = useState('');
-  const [editRoles, setEditRoles] = useState('');
-  const predefinedRoles = ['comercial', 'jefe de almacen', 'jefe de equipo', 'montador', 'tecnico auxiliar', 'tecnico audiovisual', 'dj'];
+  const [editRoles, setEditRoles] = useState<string[]>([]);
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     setError('');
     try {
       const res = await fetch('http://localhost:5000/api/users', {
@@ -40,9 +42,15 @@ const UsersPage: React.FC = () => {
     } catch (err) {
       setError((err as Error).message);
     }
-  };
+  }, [token]);
 
-  useEffect(() => { loadUsers(); }, []);
+  const filteredUsers = users.filter(user =>
+    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.roles.some(role => role.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  useEffect(() => { loadUsers(); }, [loadUsers]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +59,7 @@ const UsersPage: React.FC = () => {
         name: newName,
         email: newEmail,
         password: newPassword,
-        roles: newRoles.split(',').map(r => r.trim()).filter(r => r)
+        roles: newRoles
       };
       const res = await fetch('http://localhost:5000/api/users', {
         method: 'POST',
@@ -60,7 +68,7 @@ const UsersPage: React.FC = () => {
       });
       if (!res.ok) throw new Error(await res.text());
       setShowModal(false);
-      setNewName(''); setNewEmail(''); setNewPassword(''); setNewRoles('');
+      setNewName(''); setNewEmail(''); setNewPassword(''); setNewRoles([]);
       loadUsers();
     } catch (err) {
       setError((err as Error).message);
@@ -71,13 +79,13 @@ const UsersPage: React.FC = () => {
     setEditingId(user._id);
     setEditName(user.name);
     setEditEmail(user.email);
-    setEditRoles(user.roles.join(', '));
+    setEditRoles(user.roles);
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const body: any = { name: editName, email: editEmail, roles: editRoles.split(',').map(r => r.trim()).filter(r => r) };
+      const body: Record<string, unknown> = { name: editName, email: editEmail, roles: editRoles };
       if (editPassword) body.password = editPassword;
       const res = await fetch(`http://localhost:5000/api/users/${editingId}`, {
         method: 'PUT',
@@ -86,7 +94,7 @@ const UsersPage: React.FC = () => {
       });
       if (!res.ok) throw new Error(await res.text());
       setShowModal(false);
-      setEditingId(''); setEditName(''); setEditEmail(''); setEditPassword(''); setEditRoles('');
+      setEditingId(''); setEditName(''); setEditEmail(''); setEditPassword(''); setEditRoles([]);
       loadUsers();
     } catch (err) {
       setError((err as Error).message);
@@ -107,33 +115,103 @@ const UsersPage: React.FC = () => {
     }
   };
 
-  const filtered = users.filter(u =>
-    u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   return (
-    <div className="users-page">
-      <h1>Usuarios</h1>
-      <div className="users-controls">
-        <input type="text" placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-        <Button onClick={loadUsers}><FiRefreshCw /></Button>
-        <Button onClick={() => { setShowModal(true); setEditingId(''); }}><FiPlus /> Nuevo usuario</Button>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Gestión de Usuarios</h1>
+        <div className="flex items-center space-x-3">
+          <Link to="/admin/rbac" className="flex items-center text-blue-600 hover:text-blue-800">
+            <FiUserCheck className="mr-1" /> Admin Roles y Permisos
+          </Link>
+          <Button onClick={() => setShowModal(true)} variant="primary" className="flex items-center">
+            <FiPlus className="mr-1" /> Nuevo Usuario
+          </Button>
+        </div>
       </div>
-      {error && <div className="error">{error}</div>}
-      <ul className="users-list">
-        {filtered.map(u => (
-          <li key={u._id} className="user-card">
-            <div><strong>{u.name}</strong></div>
-            <div>{u.email}</div>
-            <div>Roles: {u.roles.join(', ')}</div>
-            <div className="actions">
-              <Button onClick={() => handleEditClick(u)}><FiEdit2 /></Button>
-              <Button onClick={() => handleDelete(u._id)}><FiTrash2 /></Button>
-            </div>
-          </li>
-        ))}
-      </ul>
+
+      <div className="mb-6 flex items-center">
+        <input
+          type="text"
+          placeholder="Buscar por nombre, email o rol..."
+          className="border p-2 rounded mr-2 flex-grow focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <Button 
+          onClick={loadUsers} 
+          variant="secondary" 
+          className="px-3 py-2"
+          title="Recargar usuarios"
+        >
+          <FiRefreshCw className={""} />
+        </Button>
+      </div>
+
+      {error && <div className="bg-red-100 text-red-700 p-3 rounded mb-4">{error}</div>}
+
+      <div className="bg-white shadow rounded-lg overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
+              <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+              <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roles</th>
+              <th className="py-3 px-4 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {filteredUsers.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="py-6 text-center text-gray-500">No se encontraron usuarios</td>
+              </tr>
+            ) : filteredUsers.map(user => (
+              <tr key={user._id} className="hover:bg-gray-50">
+                <td className="py-3 px-4">
+                  <div className="font-medium">{user.name}</div>
+                  {user.createdAt && (
+                    <div className="text-xs text-gray-500">
+                      Creado: {new Date(user.createdAt).toLocaleDateString()}
+                    </div>
+                  )}
+                </td>
+                <td className="py-3 px-4">
+                  <div>{user.email}</div>
+                  {user.lastLogin && (
+                    <div className="text-xs text-gray-500">
+                      Último acceso: {new Date(user.lastLogin).toLocaleDateString()}
+                    </div>
+                  )}
+                </td>
+                <td className="py-3 px-4">
+                  <div className="flex flex-wrap gap-1">
+                    {user.roles.map(role => (
+                      <span key={role} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                        {role}
+                      </span>
+                    ))}
+                  </div>
+                </td>
+                <td className="py-3 px-4 text-right space-x-1">
+                  <button
+                    onClick={() => handleEditClick(user)}
+                    className="text-blue-600 hover:text-blue-900 p-1"
+                    title="Editar usuario"
+                  >
+                    <FiEdit2 />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(user._id)}
+                    className="text-red-600 hover:text-red-900 p-1"
+                    title="Eliminar usuario"
+                  >
+                    <FiTrash2 />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {showModal && (
         <div className="modal-overlay">
@@ -143,29 +221,10 @@ const UsersPage: React.FC = () => {
               <input type="text" placeholder="Nombre" value={editingId ? editName : newName} onChange={e => editingId ? setEditName(e.target.value) : setNewName(e.target.value)} required />
               <input type="email" placeholder="Email" value={editingId ? editEmail : newEmail} onChange={e => editingId ? setEditEmail(e.target.value) : setNewEmail(e.target.value)} required />
               <input type="password" placeholder="Contraseña" value={editingId ? editPassword : newPassword} onChange={e => editingId ? setEditPassword(e.target.value) : setNewPassword(e.target.value)} required={!editingId} />
-              <div className="form-inline">
-                  <input type="text" placeholder="Nuevo rol" value={newRoleField} onChange={e => setNewRoleField(e.target.value)} />
-                  <Button onClick={() => { if (newRoleField.trim()) { const updated = editingId ? [...editRoles, newRoleField.trim()] : newRoles ? [...newRoles.split(','), newRoleField.trim()] : [newRoleField.trim()]; if (editingId) setEditRoles(updated); else setNewRoles(updated.join(',')); setNewRoleField(''); } }}><FiPlus /></Button>
-                </div>
-                <input type="text" placeholder="Roles (separar con comas)" value={editingId ? editRoles : newRoles} onChange={e => editingId ? setEditRoles(e.target.value) : setNewRoles(e.target.value)} />
-              <small className="helper-text">Roles predefinidos: {predefinedRoles.join(', ')}</small>
-              <div className="roles-list">
-                {predefinedRoles.map(role => {
-                  const arr = (editingId ? editRoles : newRoles).split(',').map(r => r.trim()).filter(r => r);
-                  const has = arr.includes(role);
-                  return (
-                    <button
-                      key={role}
-                      type="button"
-                      onClick={() => {
-                        const updated = [...arr]; if (!has) updated.push(role);
-                        if (editingId) setEditRoles(updated.join(', ')); else setNewRoles(updated.join(', '));
-                      }}
-                      className={has ? 'role-btn selected' : 'role-btn'}
-                    >{role}</button>
-                  );
-                })}
-              </div>
+              <UserRoleSelector 
+                selectedRoles={editingId ? editRoles : newRoles} 
+                onChange={editingId ? setEditRoles : setNewRoles} 
+              />
               <div className="modal-actions">
                 <Button type="submit">{editingId ? 'Guardar' : 'Crear'}</Button>
                 <Button type="button" onClick={() => setShowModal(false)}>Cancelar</Button>

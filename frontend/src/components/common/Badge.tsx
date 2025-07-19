@@ -2,7 +2,7 @@ import React from 'react';
 import '../../styles/badge.css';
 
 interface BadgeProps {
-  variant: 'pending' | 'active' | 'warning';
+  variant: 'pending' | 'active' | 'warning' | 'success';
   children: React.ReactNode;
 }
 

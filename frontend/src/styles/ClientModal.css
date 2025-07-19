@@ -57,6 +57,6 @@
 }
 
 .error {
-  color: #dc2626;
+  color: var(--color-danger-dark);
   margin-bottom: 1rem;
 }

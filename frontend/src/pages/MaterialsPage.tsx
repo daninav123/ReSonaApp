@@ -1,7 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import '../styles/materials.css';
 import Button from '../components/common/Button';
 import { FiPlus, FiTrash2, FiEdit2 } from 'react-icons/fi';
+import ExportButton from '../components/common/ExportButton';
+import { ExportService } from '../services/export';
+import AdvancedSearch from '../components/common/AdvancedSearch';
+import type { FilterOption, FilterState } from '../components/common/AdvancedSearch';
+import styles from './MaterialsPage.module.css';
 
 interface Material {
   _id: string;
@@ -17,20 +22,21 @@ interface Material {
 // No usar mock, cargar desde API
 
 
-const statusLabel = {
+const statusLabel: Record<string, string> = {
   ok: 'Stock OK',
   low: 'Stock bajo',
   out: 'Agotado',
 };
-const statusColor = {
+const statusColor: Record<string, string> = {
   ok: '#22c55e',
   low: '#f59e42',
-  out: '#ef4444',
+  out: 'var(--color-danger)',
 };
 
 const MaterialsPage: React.FC = () => {
   const token = localStorage.getItem('token') || '';
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [filteredMaterials, setFilteredMaterials] = useState<Material[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [newName, setNewName] = useState('');
   const [newStock, setNewStock] = useState(1);
@@ -41,8 +47,132 @@ const MaterialsPage: React.FC = () => {
   const [editStock, setEditStock] = useState(1);
   const [editImage, setEditImage] = useState<File | null>(null);
   const [editImageUrl, setEditImageUrl] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [filters, setFilters] = useState<FilterState>({});
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>('');
+  
+  // Definición de opciones de filtro específicas para materiales
+  const filterOptions: FilterOption[] = [
+    {
+      id: 'status',
+      label: 'Estado de stock',
+      type: 'select',
+      options: [
+        { value: 'all', label: 'Todos' },
+        { value: 'ok', label: 'Stock OK' },
+        { value: 'low', label: 'Stock bajo' },
+        { value: 'out', label: 'Agotado' }
+      ],
+      defaultValue: 'all'
+    },
+    {
+      id: 'minQuantity',
+      label: 'Cantidad mínima',
+      type: 'number',
+      defaultValue: ''
+    },
+    {
+      id: 'maxQuantity',
+      label: 'Cantidad máxima',
+      type: 'number',
+      defaultValue: ''
+    },
+    {
+      id: 'hasPhotos',
+      label: 'Con fotos',
+      type: 'boolean',
+      defaultValue: false
+    },
+    {
+      id: 'hasReservations',
+      label: 'Con reservas',
+      type: 'boolean',
+      defaultValue: false
+    }
+  ];
+
+  // Función para filtrar materiales según término de búsqueda y filtros
+  const filterMaterialsList = useCallback((materialsList: Material[], query: string, filterValues: FilterState) => {
+    // Si no hay término de búsqueda ni filtros, devolver todos los materiales
+    if (!query && Object.keys(filterValues).length === 0) {
+      return materialsList;
+    }
+
+    return materialsList.filter(material => {
+      if (query) {
+        const searchRegex = new RegExp(query, 'i');
+        if (!searchRegex.test(material.name) && (!material.description || !searchRegex.test(material.description))) {
+          return false;
+        }
+      }
+
+      if (filterValues.status && filterValues.status !== 'all') {
+        if (material.status !== filterValues.status) {
+          return false;
+        }
+      }
+
+      if (filterValues.minQuantity && material.quantityTotal < Number(filterValues.minQuantity)) {
+        return false;
+      }
+
+      if (filterValues.maxQuantity && material.quantityTotal > Number(filterValues.maxQuantity)) {
+        return false;
+      }
+
+      if (filterValues.hasPhotos && (!material.photos || material.photos.length === 0)) {
+        return false;
+      }
+
+      if (filterValues.hasReservations && material.quantityReserved <= 0) {
+        return false;
+      }
+
+      return true;
+    });
+  }, []);
+
+  const handleAdvancedSearch = useCallback((query: string, filterValues: FilterState) => {
+    setSearchTerm(query);
+    setFilters(filterValues);
+
+    const filtered = filterMaterialsList(materials, query, filterValues);
+    setFilteredMaterials(filtered);
+  }, [materials, filterMaterialsList]);
+
+  // Función para manejar la exportación de materiales
+  const handleExport = (format: 'pdf' | 'excel' | 'csv') => {
+    // Definir los campos a exportar
+    const fields = [
+      { key: 'name' as keyof Material, header: 'Nombre' },
+      { key: 'description' as keyof Material, header: 'Descripción' },
+      { key: 'status' as keyof Material, header: 'Estado', 
+        formatter: (value: string) => statusLabel[value] || value },
+      { key: 'quantityTotal' as keyof Material, header: 'Stock total' },
+      { key: 'quantityReserved' as keyof Material, header: 'Stock reservado' },
+      { key: 'photos' as keyof Material, header: 'Fotos', 
+        formatter: (value: string[]) => value?.length > 0 ? `${value.length} foto(s)` : 'Sin fotos' }
+    ];
+    
+    // Usar los materiales filtrados para la exportación
+    const dataToExport = filteredMaterials.length > 0 ? filteredMaterials : materials;
+    
+    // Configurar opciones de exportación
+    const exportOptions = {
+      format,
+      fileName: `materiales_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : format}`,
+      title: 'Inventario de Materiales',
+      sheetName: 'Materiales'
+    };
+    
+    // Exportar los datos
+    ExportService.exportList(dataToExport, fields, exportOptions);
+  };
 
   const loadMaterials = async () => {
+    setLoading(true);
+    setError('');
     try {
       const res = await fetch('http://localhost:5000/api/materials', {
         headers: { Authorization: `Bearer ${token}` },
@@ -50,8 +180,13 @@ const MaterialsPage: React.FC = () => {
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       setMaterials(data.data);
+      setFilteredMaterials(filterMaterialsList(data.data, searchTerm, filters));
     } catch (err) {
-      alert('Error al cargar materiales: ' + (err as Error).message);
+      const errorMsg = (err as Error).message;
+      setError(errorMsg);
+      console.error('Error al cargar materiales:', errorMsg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -159,116 +294,172 @@ const MaterialsPage: React.FC = () => {
     setEditStock(1);
   };
 
-  const [filterName, setFilterName] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'ok' | 'low' | 'out'>('all');
-
-  const filteredMaterials = materials.filter(mat =>
-    (filterStatus === 'all' || mat.status === filterStatus) &&
-    mat.name.toLowerCase().includes(filterName.toLowerCase())
-  );
-
   return (
-    <div className="materials-page page-container">
-      <h1>Materiales</h1>
-      <div className="page-controls">
-        <input
-          type="text"
-          placeholder="Buscar por nombre..."
-          value={filterName}
-          onChange={e => setFilterName(e.target.value)}
-          style={{ flex: 1, padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid #ccc' }}
-        />
-        <select
-          value={filterStatus}
-          onChange={e => setFilterStatus(e.target.value as any)}
-          style={{ padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid #ccc' }}
-        >
-          <option value="all">Todos los estados</option>
-          <option value="ok">Stock OK</option>
-          <option value="low">Stock bajo</option>
-          <option value="out">Agotado</option>
-        </select>
-        <Button onClick={() => setShowModal(true)}><FiPlus /> Añadir material</Button>
+    <div className={styles.materialsPage}>
+      <div className={styles.header}>
+        <h1>Materiales</h1>
+        <div className={styles.actions}>
+          <ExportButton 
+            onExport={handleExport}
+            disabled={materials.length === 0}
+            variant="outline"
+            label="Exportar Materiales"
+          />
+          <Button onClick={() => setShowModal(true)}>
+            <FiPlus /> Añadir material
+          </Button>
+        </div>
       </div>
-      <ul className="materials-list">
-        {filteredMaterials.map(mat => (
-          <li key={mat._id} className="material-card">
-            {editingId === mat._id ? (
-              <form onSubmit={handleSaveEdit} className="form-vertical">
-                <input
-                  type="text"
-                  value={editName}
-                  onChange={e => setEditName(e.target.value)}
-                  required
-                  style={{ padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid #ccc' }}
-                />
-                <input
-                  type="number"
-                  min={0}
-                  value={editStock}
-                  onChange={e => setEditStock(Number(e.target.value))}
-                  required
-                  style={{ padding: '0.5rem', borderRadius: '0.375rem', border: '1px solid #ccc' }}
-                />
-                <input type="file" accept="image/*" onChange={handleEditImageChange} />
-                {editImageUrl && (
-                  <img src={editImageUrl} alt="material" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 8, marginTop: 8 }} />
-                )}
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto' }}>
+
+      <div className={styles.searchSection}>
+        <AdvancedSearch
+          onSearch={handleAdvancedSearch}
+          filterOptions={filterOptions}
+          initialQuery={searchTerm}
+          initialFilters={filters}
+        />
+      </div>
+
+      {loading && <p className={styles.loading}>Cargando materiales...</p>}
+      {error && <div className={styles.error}>{error}</div>}
+
+      <div className={styles.materialsList}>
+        {filteredMaterials.map(material => (
+          <div key={material._id} className={styles.materialCard}>
+            {editingId === material._id ? (
+              <form onSubmit={handleSaveEdit} className={styles.form}>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Nombre</label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    placeholder="Nombre"
+                    className={styles.input}
+                    required
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Stock</label>
+                  <input
+                    type="number"
+                    value={editStock}
+                    onChange={e => setEditStock(parseInt(e.target.value) || 1)}
+                    min="0"
+                    className={styles.input}
+                    required
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>Imagen</label>
+                  <input
+                    type="file"
+                    onChange={handleEditImageChange}
+                    accept="image/*"
+                    className={styles.input}
+                  />
+                  {editImageUrl && <img src={editImageUrl} alt="Preview" className={styles.imagePreview} />}
+                </div>
+                <div className={styles.modalActions}>
                   <Button type="submit">Guardar</Button>
                   <Button type="button" onClick={handleCancelEdit}>Cancelar</Button>
                 </div>
               </form>
             ) : (
-              <div className="material-info">
-                <span className="material-name">{mat.name}</span>
-                <span className={`material-status ${mat.status}`}>{statusLabel[mat.status]}</span>
-                <div className="material-stock">Stock: {mat.quantityTotal}</div>
-                {mat.photos[0] && (
-                  <img src={mat.photos[0]} alt="material" className="material-image" />
-                )}
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto' }}>
-                  <Button onClick={() => handleEditClick(mat)}><FiEdit2 /></Button>
-                  <Button onClick={() => handleDelete(mat._id)} style={{ background: '#ef4444' }}><FiTrash2 /></Button>
+              <>
+                <div className={styles.materialHeader}>
+                  <h3 className={styles.materialTitle}>{material.name}</h3>
+                  <span
+                    className={styles.materialStatus}
+                    style={{ backgroundColor: statusColor[material.status] }}
+                  >
+                    {statusLabel[material.status]}
+                  </span>
                 </div>
-              </div>
+                
+                {material.description && <p className={styles.materialDescription}>{material.description}</p>}
+                
+                {material.photos?.length > 0 && (
+                  <img
+                    src={`http://localhost:5000/uploads/${material.photos[0]}`}
+                    alt={material.name}
+                    className={styles.materialImage}
+                  />
+                )}
+                
+                <div className={styles.materialInfo}>
+                  <div className={styles.stockInfo}>
+                    <span>Stock total: {material.quantityTotal}</span>
+                    <span>Reservado: {material.quantityReserved}</span>
+                  </div>
+                  
+                  <div className={styles.statusIndicator}>
+                    <div
+                      className={styles.statusBar}
+                      style={{
+                        backgroundColor: statusColor[material.status],
+                        width: `${(material.quantityTotal - material.quantityReserved) / material.quantityTotal * 100}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                <div className={styles.materialActions}>
+                  <Button onClick={() => handleEditClick(material)}><FiEdit2 /></Button>
+                  <Button onClick={() => handleDelete(material._id)} style={{ background: 'var(--color-danger)' }}><FiTrash2 /></Button>
+                </div>
+              </>
             )}
-          </li>
+          </div>
         ))}
-        {filteredMaterials.length === 0 && (
-          <li style={{ color: '#888', fontStyle: 'italic', padding: '1rem' }}>No hay materiales que coincidan.</li>
+        {filteredMaterials.length === 0 && !loading && (
+          <p className={styles.emptyState}>
+            {materials.length === 0 ? 'No hay materiales en el inventario.' : 'No se encontraron materiales que coincidan con tu búsqueda.'}
+          </p>
         )}
-      </ul>
+      </div>
+
       {showModal && (
-        <div className="modal-overlay">
-          <div className="modal">
+        <div className={styles.modalOverlay}>
+          <form className={styles.modalContent} onSubmit={handleAdd}>
             <h2>Nuevo material</h2>
-            <form onSubmit={handleAdd}>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Nombre</label>
               <input
                 type="text"
-                placeholder="Nombre del material"
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
+                placeholder="Nombre"
+                className={styles.input}
                 required
               />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Stock</label>
               <input
                 type="number"
-                min={0}
-                placeholder="Stock"
                 value={newStock}
-                onChange={e => setNewStock(Number(e.target.value))}
+                onChange={e => setNewStock(parseInt(e.target.value) || 1)}
+                min="0"
+                className={styles.input}
                 required
               />
-              <input type="file" accept="image/*" onChange={handleNewImageChange} />
-              {newImageUrl && (
-                <img src={newImageUrl} alt="material" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 8, marginTop: 8 }} />
-              )}
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <Button type="submit">Añadir</Button>
-                <Button type="button" onClick={() => setShowModal(false)}>Cancelar</Button>
-              </div>
-            </form>
-          </div>
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Imagen</label>
+              <input
+                type="file"
+                onChange={handleNewImageChange}
+                accept="image/*"
+                className={styles.input}
+              />
+              {newImageUrl && <img src={newImageUrl} alt="Preview" className={styles.imagePreview} />}
+            </div>
+            <div className={styles.modalActions}>
+              <Button type="submit">Crear</Button>
+              <Button type="button" onClick={() => setShowModal(false)}>Cancelar</Button>
+            </div>
+          </form>
         </div>
       )}
     </div>

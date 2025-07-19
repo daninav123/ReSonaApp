@@ -1,0 +1,226 @@
+/* Variables CSS para tamaños de fuente */
+:root {
+  --font-size: 16px;
+  --heading-1: calc(var(--font-size) * 2.5);
+  --heading-2: calc(var(--font-size) * 2);
+  --heading-3: calc(var(--font-size) * 1.75);
+  --heading-4: calc(var(--font-size) * 1.5);
+  --heading-5: calc(var(--font-size) * 1.25);
+  --heading-6: var(--font-size);
+  --body-1: var(--font-size);
+  --body-2: calc(var(--font-size) * 0.875);
+  --caption: calc(var(--font-size) * 0.75);
+  --button: var(--font-size);
+  --input: var(--font-size);
+}
+
+/* Estilos base para accesibilidad */
+body {
+  font-size: var(--font-size);
+  line-height: 1.5;
+  color: #333;
+  background-color: #fff;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* Modo alto contraste */
+.high-contrast {
+  --primary-color: #000;
+  --secondary-color: #fff;
+  --background: #000;
+  --text: #fff;
+  --error: #ff0;
+  --success: #0f0;
+  --warning: #ff0;
+  --info: #0ff;
+}
+
+.high-contrast body {
+  background-color: var(--background);
+  color: var(--text);
+}
+
+/* Mejoras de foco para teclado */
+a:focus,
+button:focus,
+input:focus,
+select:focus,
+textarea:focus,
+[tabindex="0"]:focus {
+  outline: 3px solid #4a90e2;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.5);
+}
+
+/* Mejoras para lectores de pantalla */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Mejoras para contraste */
+@media (prefers-contrast: more) {
+  * {
+    color: #000 !important;
+    background-color: #fff !important;
+  }
+  
+  img {
+    filter: grayscale(100%) contrast(150%) !important;
+  }
+}
+
+/* Mejoras para motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Mejoras para texto e imágenes */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+img[alt=""] {
+  border: 2px dashed #f00;
+}
+
+/* Mejoras para formularios */
+label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+input,
+select,
+textarea,
+button {
+  font-size: var(--input);
+}
+
+/* Mejoras para tablas */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+th {
+  background-color: #f5f5f5;
+}
+
+/* Mejoras para enlaces */
+a {
+  color: #1976d2;
+  text-decoration: none;
+}
+
+a:hover,
+a:focus {
+  text-decoration: underline;
+}
+
+/* Mejoras para botones */
+button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ccc;
+  background-color: #f5f5f5;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Mejoras para mensajes */
+.alert {
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+}
+
+.alert-success {
+  color: #155724;
+  background-color: #d4edda;
+  border-color: #c3e6cb;
+}
+
+.alert-error {
+  color: #721c24;
+  background-color: #f8d7da;
+  border-color: #f5c6cb;
+}
+
+/* Mejoras para navegación */
+nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 1rem;
+}
+
+/* Mejoras para encabezados */
+h1 { font-size: var(--heading-1); }
+h2 { font-size: var(--heading-2); }
+h3 { font-size: var(--heading-3); }
+h4 { font-size: var(--heading-4); }
+h5 { font-size: var(--heading-5); }
+h6 { font-size: var(--heading-6); }
+
+/* Mejoras para texto */
+p { font-size: var(--body-1); }
+small { font-size: var(--caption); }
+
+/* Clases de utilidad para accesibilidad */
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  z-index: 999;
+  padding: 1em;
+  background-color: #fff;
+  color: #000;
+  opacity: 0;
+}
+
+.skip-to-content:focus {
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 1;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

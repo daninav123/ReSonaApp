@@ -1,66 +1,68 @@
-// @ts-nocheck
 import express from 'express';
 import cors from 'cors';
-import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import { User, Client, Budget, Event, Material, Task, Notification } from './models';
-import authRouter from './routes/auth';
-import usersRouter from './routes/users';
-import clientsRouter from './routes/clients';
-import { MongoMemoryServer } from 'mongodb-memory-server';
-import bcrypt from 'bcrypt';
+import http from 'http';
+import { DatabaseConfig } from './config/database';
+import { errorHandler } from './middleware/errorHandler';
+import { RoutesConfig } from './config/routes';
+import { WebSocketService } from './services/websocket';
 
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app);
 app.use(cors());
 app.use(express.json());
 
-// Auth routes
-app.use('/api/auth', authRouter);
-// User routes
-app.use('/api/clients', clientsRouter);
-// Client routes
-app.use('/api/users', usersRouter);
+// Health check
+app.get('/', (req, res) => {
+  res.send('ReSona Events CRM API is up');
+});
+
+// Configure routes
+app.use(RoutesConfig.getInstance().getRouter());
+
+// Error handling middleware
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
+
 async function startServer() {
   try {
-    const isProd = process.env.NODE_ENV === 'production';
-    const mongoUri = isProd
-      ? (process.env.MONGO_URI as string)
-      : (await MongoMemoryServer.create()).getUri();
-    if (!isProd) console.log('✨ Using in-memory MongoDB at', mongoUri);
-    await mongoose.connect(mongoUri);
-    console.log('✅ Connected to MongoDB');
-    console.log('Models:', mongoose.modelNames());
-    // Seed default admin in in-memory DB
-    if (!isProd) {
-      const existingAdmin = await User.findOne({ email: 'admin@example.com' });
-      if (!existingAdmin) {
-        const salt = await bcrypt.genSalt(10);
-        const hash = await bcrypt.hash('admin123', salt);
-        await User.create({ name: 'Admin', email: 'admin@example.com', passwordHash: hash, roles: ['CEO'] });
-        console.log('✨ Seeded CEO user: admin@example.com / admin123');
-      }
-    }
-    app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+    // Initialize database
+    await DatabaseConfig.getInstance().initialize();
+    
+    // Start server
+    server.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+
+    // Initialize WebSocket server
+    const wss = WebSocketService.init(server);
+
+    // WebSocket upgrade handling
+    server.on('upgrade', (request: http.IncomingMessage, socket: any, head: Buffer) => {
+      wss.handleUpgrade(request, socket, head, (ws: WebSocket) => {
+        wss.wss.emit('connection', ws, request);
+      });
+    });
   } catch (err) {
-    console.error('❌ DB connection error:', err);
+    console.error('❌ Server startup error:', err);
+    process.exit(1);
   }
 }
 
-startServer();
-
-// Health check
-
-app.get('/', (req, res) => res.send('ReSona Events CRM API is up'));
-
-// Test: list users (initially empty)
-
-app.get('/users', async (req, res) => {
-  const users = await User.find();
-  res.json(users);
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM signal received: closing HTTP server');
+  try {
+    await DatabaseConfig.getInstance().close();
+    console.log('✅ MongoDB connection closed');
+  } catch (err) {
+    console.error('❌ Error closing MongoDB connection:', err);
+  }
+  process.exit(0);
 });
 
-
+startServer();

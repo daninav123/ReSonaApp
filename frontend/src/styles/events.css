@@ -7,14 +7,15 @@
 
 /* Calendar event highlight */
 .react-calendar__tile.event-day {
-  background: var(--color-primary, #2563eb);
-  color: #fff !important;
+  background: var(--color-primary);
+  color: var(--color-bg) !important;
   border-radius: 50%;
   font-weight: bold;
 }
 .react-calendar__tile.event-day:enabled:hover,
 .react-calendar__tile.event-day:enabled:focus {
-  background: var(--color-active, #1d4ed8);
+  background: var(--color-active);
+  color: var(--color-bg);
   color: #fff;
 }
 
@@ -26,12 +27,12 @@
   font-family: inherit;
 }
 .react-calendar__tile--now {
-  background: #e0e7ff;
-  color: #2563eb;
+  background: var(--color-primary-light);
+  color: var(--color-primary);
   border-radius: 50%;
 }
 .react-calendar__tile--active {
-  background: #2563eb;
+  background: var(--color-primary);
   color: #fff;
   border-radius: 50%;
 }
@@ -58,11 +59,11 @@
   font-size: 1.25rem;
 }
 .event-card span {
-  color: #555;
+  color: var(--color-text-secondary);
   font-size: 1rem;
 }
 .event-card button {
-  background-color: #ef4444;
+  background-color: var(--color-danger);
   color: #fff;
   border: none;
   align-self: flex-end;
@@ -71,7 +72,7 @@
   transition: background-color 0.2s;
 }
 .event-card button:hover {
-  background-color: #dc2626;
+  background-color: var(--color-danger-dark);
 }
 .modal-overlay {
   position: fixed;

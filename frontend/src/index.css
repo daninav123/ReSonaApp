@@ -1,33 +1,13 @@
+@import './styles/variables.css';
+@import './styles/responsive.css';
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
+  font-family: var(--font-family-base);
+  line-height: var(--line-height-base);
+  font-weight: var(--font-weight-normal);
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  /* Tipografía y escala de diseño */
-  --font-family-base: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  --font-family-heading: 'Avenir Next', sans-serif;
-  --font-size-base: 1rem;
-  --font-size-sm: 0.875rem;
-  --font-size-lg: 1.25rem;
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2rem;
-  --border-radius: 0.5rem;
-
-  /* Paleta de colores */
-  --color-primary: #3b82f6;
-  --color-pending: #3b82f6;
-  --color-active: #10b981;
-  --color-warning: #f59e0b;
-  --sidebar-bg: #e0f2fe;
-  --sidebar-active: #bae6fd;
-
+  color: var(--color-text);
+  background-color: var(--color-bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -35,12 +15,15 @@
 }
 
 a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary);
+  text-decoration: none;
+  transition: color 0.2s ease-in-out;
 }
+
 a:hover {
-  color: #535bf2;
+  color: var(--color-primary-hover);
+  text-decoration: underline;
 }
 
 body {
@@ -61,33 +44,66 @@ h1 {
 }
 
 button {
-  border-radius: 8px;
+  border-radius: var(--border-radius);
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--color-primary);
+  color: white;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  transition: all 0.2s ease-in-out;
 }
 
-@media (prefers-color-scheme: light) {
+button:hover {
+  background-color: var(--color-primary-hover);
+  transform: translateY(-1px);
+}
+
+button:focus,
+button:focus-visible {
+  outline: 4px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Dark theme overrides are now handled in variables.css */
+
+/* Utility Classes */
+.text-danger {
+  color: var(--color-danger);
+}
+
+.bg-danger {
+  background-color: var(--color-danger);
+}
+
+.text-success {
+  color: var(--color-success);
+}
+
+.bg-success {
+  background-color: var(--color-success);
+}
+
+.text-warning {
+  color: var(--color-warning);
+}
+
+.bg-warning {
+  background-color: var(--color-warning);
+}
+
+/* Responsive typography */
+@media (max-width: 768px) {
   :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
+    --font-size-base: 0.9375rem;
+    --spacing-md: 0.875rem;
+    --spacing-lg: 1.25rem;
   }
 }

@@ -1,0 +1,159 @@
+/* Mobile responsiveness styles */
+
+/* Small devices (phones) */
+@media screen and (max-width: 480px) {
+  .page-container {
+    padding: var(--spacing-sm);
+  }
+  
+  .page-controls,
+  .form-inline,
+  .budgets-controls,
+  .clients-controls,
+  .materials-controls,
+  .users-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .form-control {
+    width: 100%;
+  }
+  
+  .card-actions {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .notification-card {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  /* Dashboard charts on mobile */
+  .chart-container {
+    height: auto !important; /* Override any height constraints */
+  }
+
+  /* Table adjustments for mobile */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  
+  /* Adjust buttons for better touch targets */
+  button, 
+  .btn, 
+  .nav-link {
+    padding: 12px !important; /* Larger touch targets */
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Medium devices (tablets) */
+@media screen and (min-width: 481px) and (max-width: 768px) {
+  .page-container {
+    padding: var(--spacing-sm);
+  }
+  
+  .budgets-controls,
+  .clients-controls,
+  .materials-controls,
+  .users-controls {
+    flex-wrap: wrap;
+  }
+  
+  .form-control {
+    max-width: 100%;
+  }
+
+  /* Chart adjustments for tablets */
+  .chart-container {
+    max-width: 100%;
+  }
+}
+
+/* Responsive grid layouts */
+@media screen and (max-width: 768px) {
+  /* Make grids stack on mobile */
+  .MuiGrid-container {
+    flex-direction: column;
+  }
+  
+  /* Full-width grid items on mobile */
+  .MuiGrid-item {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex-basis: 100% !important;
+  }
+
+  /* Fix for dashboard cards on mobile */
+  .dashboard-cards {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Chart containers on mobile/tablets */
+  .chart-wrapper {
+    margin-bottom: 20px;
+  }
+
+  /* Improve dashboard layout on mobile */
+  .dashboard {
+    padding: var(--spacing-xs);
+  }
+}
+
+/* Better font sizing on small screens */
+@media screen and (max-width: 480px) {
+  html {
+    font-size: 14px;
+  }
+  
+  h1 {
+    font-size: 1.5rem !important;
+  }
+  
+  h2 {
+    font-size: 1.3rem !important;
+  }
+  
+  h3 {
+    font-size: 1.1rem !important;
+  }
+  
+  /* More legible text on mobile */
+  p, span, div {
+    font-size: 1rem;
+  }
+}
+
+/* Fix for status indicators and chips on mobile */
+@media screen and (max-width: 768px) {
+  .status-indicator,
+  .MuiChip-root {
+    margin: 4px 0;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Ensure modals are usable on mobile */
+@media screen and (max-width: 480px) {
+  .modal-content {
+    width: 95% !important;
+    max-width: 95% !important;
+    margin: 0 auto;
+    padding: var(--spacing-sm) !important;
+  }
+  
+  .modal-actions {
+    flex-direction: column;
+    gap: var(--spacing-xs);
+  }
+  
+  .modal-actions button {
+    width: 100%;
+  }
+}
